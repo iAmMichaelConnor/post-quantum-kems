@@ -1,0 +1,89 @@
+name: Noir tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  MINIMUM_NOIR_VERSION: 1.0.0-rc.3
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Nargo
+        uses: noir-lang/noirup@bedac8fbe6a059177c35e565f9f76db54a795976 # v0.1.5
+        with:
+          toolchain: ${{ env.MINIMUM_NOIR_VERSION }}
+
+      - name: Run formatter
+        run: nargo fmt --check
+
+      - name: Check generated files
+        run: python3 scripts/generate.py --check
+
+  # One job per package and toolchain: the minimum supported Noir (1.0.0-rc.3, which Aztec 6.0.0 ships) and the
+  # latest release; nightly-canary.yml covers Noir nightly. Each package runs in its per-pull-request mode
+  # (CONTRIBUTING.md#tests) with four test threads, the vCPUs of a hosted runner.
+  test:
+    name: Test ${{ matrix.package }} on Nargo ${{ matrix.toolchain }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [1.0.0-rc.3, 1.0.0]
+        package: [fips202, lattice_kem_core, ml_kem, kyber]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Nargo
+        uses: noir-lang/noirup@bedac8fbe6a059177c35e565f9f76db54a795976 # v0.1.5
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Run tests
+        run: nargo test --force-brillig --inliner-aggressiveness 0 --package ${{ matrix.package }} --test-threads 4
+
+      - name: Check lattice_kem_core visibility
+        if: matrix.package == 'lattice_kem_core'
+        run: ./scripts/check-core-visibility.sh
+
+  # This is a job which depends on all test jobs and reports the overall status.
+  # This allows us to add/remove test jobs without having to update the required workflows.
+  tests-end:
+    name: Noir End
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # We want this job to always run (even if the dependant jobs fail) as we want this job to fail rather than skipping.
+    if: ${{ always() }}
+    needs:
+      - format
+      - test
+
+    steps:
+      - name: Report overall success
+        run: |
+          if [[ $FAIL == true ]]; then
+              exit 1
+          else
+              exit 0
+          fi
+        env:
+          # A failed or cancelled job fails the workflow; a skipped job does not.
+          FAIL: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}

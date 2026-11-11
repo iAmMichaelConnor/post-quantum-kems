@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "noir/fips202",
+    "noir/lattice_kem_core",
+    "noir/ml_kem",
+    "noir/kyber",
+]

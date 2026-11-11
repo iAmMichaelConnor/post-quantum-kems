@@ -1,0 +1,14 @@
+post-quantum-kems
+Copyright 2026 Michael Connor
+
+This repository contains third-party material used only to generate test
+vectors. No Noir package depends on it.
+
+reference/kyber-py/src/kyber_py and reference/kyber-py/PQCkemKAT_*.rsp are
+copied from kyber-py by Giacomo Pope, https://github.com/GiacomoPope/kyber-py,
+at commit 897923667b2fa80afcf910fc8c1825dddf54a97d, licensed MIT OR Apache-2.0
+(both texts are in reference/kyber-py/LICENSE).
+
+reference/nist-acvp/*.json are NIST ACVP-Server sample vectors,
+https://github.com/usnistgov/ACVP-Server, at commit
+975de31eb83d87039ec88934fdc47d8c312b892d.

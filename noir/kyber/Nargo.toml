@@ -1,0 +1,8 @@
+[package]
+name = "kyber"
+type = "lib"
+authors = ["Michael Connor"]
+compiler_version = ">=1.0.0"
+
+[dependencies]
+lattice_kem_core = { path = "../lattice_kem_core" }
